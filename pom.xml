@@ -58,6 +58,11 @@
             <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>42.7.10</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -81,7 +86,7 @@
                         <id>default-cli</id>
                         <configuration>
                             <mainClass>
-                                main.sistema_cafeteria_autoservicio/main.sistema_cafeteria_autoservicio.HelloApplication
+                                main.sistema_cafeteria_autoservicio.Launcher
                             </mainClass>
                             <launcher>app</launcher>
                             <jlinkZipName>app</jlinkZipName>
