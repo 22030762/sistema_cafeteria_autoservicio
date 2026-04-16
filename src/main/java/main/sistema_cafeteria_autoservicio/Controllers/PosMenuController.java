@@ -13,8 +13,10 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 import main.sistema_cafeteria_autoservicio.Launcher;
+import main.sistema_cafeteria_autoservicio.Models.CarritoItem;
 import main.sistema_cafeteria_autoservicio.Models.Extra;
 import main.sistema_cafeteria_autoservicio.Models.Producto;
 import main.sistema_cafeteria_autoservicio.Utils.Dao.ExtraDao;
@@ -23,7 +25,6 @@ import main.sistema_cafeteria_autoservicio.Utils.Dao.ProductoDao;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -39,21 +40,15 @@ public class PosMenuController {
     @FXML
     private Label categoriaActualLabel;
     @FXML
-    private Label itemsResumenLabel;
-    @FXML
-    private Label totalResumenLabel;
-    @FXML
     private Label extrasSeleccionadosLabel;
     @FXML
     private FlowPane productosFlow;
-    @FXML
-    private VBox carritoItemsBox;
     @FXML
     private VBox extrasBox;
 
     private final List<Producto> productos = new ArrayList<>();
     private final List<Extra> extrasDisponibles = new ArrayList<>();
-    private final Map<String, DetalleLinea> carritoDetalles = new LinkedHashMap<>();
+    private final Map<String, CarritoItem> carritoDetalles = new LinkedHashMap<>();
 
     private String categoriaSeleccionada = "TODOS";
 
@@ -66,6 +61,38 @@ public class PosMenuController {
 
     public void setUsuarioSesion(String username) {
         usuarioLabel.setText("Cajero: " + username);
+    }
+
+    @FXML
+    public void handleAbrirCarrito() {
+        if (carritoDetalles.isEmpty()) {
+            estadoLabel.setText("El carrito esta vacio");
+            return;
+        }
+
+        try {
+            FXMLLoader loader = new FXMLLoader(
+                    Launcher.class.getResource("/main/sistema_cafeteria_autoservicio/carrito-modal-view.fxml")
+            );
+            Scene scene = new Scene(loader.load());
+
+            CarritoModalController controller = loader.getController();
+            controller.setCarrito(carritoDetalles, this::actualizarResumenPedido);
+
+            Stage owner = (Stage) usuarioLabel.getScene().getWindow();
+            Stage modal = new Stage();
+            modal.setTitle("Carrito de compra");
+            modal.initOwner(owner);
+            modal.initModality(Modality.APPLICATION_MODAL);
+            modal.setResizable(false);
+            modal.setScene(scene);
+            modal.showAndWait();
+
+            actualizarResumenPedido();
+        } catch (IOException e) {
+            e.printStackTrace();
+            estadoLabel.setText("No se pudo abrir el carrito");
+        }
     }
 
     @FXML
@@ -219,12 +246,12 @@ public class PosMenuController {
         List<Extra> extrasSeleccionados = obtenerExtrasSeleccionados();
         String claveDetalle = construirClaveDetalle(producto.getIdProducto(), extrasSeleccionados);
 
-        DetalleLinea detalle = carritoDetalles.get(claveDetalle);
+        CarritoItem detalle = carritoDetalles.get(claveDetalle);
         if (detalle == null) {
-            detalle = new DetalleLinea(producto, extrasSeleccionados);
+            detalle = new CarritoItem(producto, extrasSeleccionados);
             carritoDetalles.put(claveDetalle, detalle);
         } else {
-            detalle.cantidad += 1;
+            detalle.incrementarCantidad();
         }
 
         actualizarResumenPedido();
@@ -252,83 +279,17 @@ public class PosMenuController {
     private void actualizarResumenPedido() {
         int totalItems = 0;
         BigDecimal total = BigDecimal.ZERO;
-        carritoItemsBox.getChildren().clear();
 
-        for (Map.Entry<String, DetalleLinea> entry : carritoDetalles.entrySet()) {
-            String claveDetalle = entry.getKey();
-            DetalleLinea detalle = entry.getValue();
-
-            totalItems += detalle.cantidad;
-            BigDecimal subtotal = detalle.calcularSubtotal();
-            total = total.add(subtotal);
-
-            VBox infoLinea = new VBox(2);
-            Label nombreLinea = new Label(detalle.producto.getNombre() + " x" + detalle.cantidad);
-            nombreLinea.setStyle("-fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: bold;");
-
-            Label extrasLinea = new Label("Extras: " + detalle.obtenerNombresExtras());
-            extrasLinea.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 12px;");
-
-            Label subtotalLinea = new Label(formatearMoneda(subtotal));
-            subtotalLinea.setStyle("-fx-text-fill: #fda4af; -fx-font-size: 13px;");
-
-            infoLinea.getChildren().addAll(nombreLinea, extrasLinea, subtotalLinea);
-
-            Button menosButton = new Button("-");
-            menosButton.setStyle("-fx-background-color: #334155; -fx-text-fill: white;");
-            menosButton.setOnAction(event -> modificarCantidad(claveDetalle, -1));
-
-            Button masButton = new Button("+");
-            masButton.setStyle("-fx-background-color: #334155; -fx-text-fill: white;");
-            masButton.setOnAction(event -> modificarCantidad(claveDetalle, 1));
-
-            Button eliminarButton = new Button("X");
-            eliminarButton.setStyle("-fx-background-color: #7f1d1d; -fx-text-fill: white;");
-            eliminarButton.setOnAction(event -> eliminarDetalle(claveDetalle));
-
-            HBox acciones = new HBox(6, menosButton, masButton, eliminarButton);
-            acciones.setAlignment(Pos.CENTER_RIGHT);
-
-            Region separador = new Region();
-            HBox.setHgrow(separador, Priority.ALWAYS);
-
-            HBox linea = new HBox(8, infoLinea, separador, acciones);
-            linea.setPadding(new Insets(6, 0, 6, 0));
-            carritoItemsBox.getChildren().add(linea);
+        for (CarritoItem detalle : carritoDetalles.values()) {
+            totalItems += detalle.getCantidad();
+            total = total.add(detalle.getSubtotal());
         }
 
-        if (carritoItemsBox.getChildren().isEmpty()) {
-            Label vacio = new Label("Aun no hay productos en el pedido.");
-            vacio.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 13px;");
-            carritoItemsBox.getChildren().add(vacio);
-        }
-
-        itemsResumenLabel.setText("Items: " + totalItems);
-        totalResumenLabel.setText("Total: " + formatearMoneda(total));
-    }
-
-    private void modificarCantidad(String claveDetalle, int delta) {
-        DetalleLinea detalle = carritoDetalles.get(claveDetalle);
-        if (detalle == null) {
-            return;
-        }
-
-        int nuevaCantidad = detalle.cantidad + delta;
-        if (nuevaCantidad <= 0) {
-            carritoDetalles.remove(claveDetalle);
-            estadoLabel.setText("Linea eliminada del pedido");
+        if (totalItems == 0) {
+            estadoLabel.setText("Carrito vacio");
         } else {
-            detalle.cantidad = nuevaCantidad;
-            estadoLabel.setText("Cantidad actualizada");
+            estadoLabel.setText("Carrito: " + totalItems + " items | Total: " + formatearMoneda(total));
         }
-
-        actualizarResumenPedido();
-    }
-
-    private void eliminarDetalle(String claveDetalle) {
-        carritoDetalles.remove(claveDetalle);
-        estadoLabel.setText("Linea eliminada del pedido");
-        actualizarResumenPedido();
     }
 
     private boolean perteneceCategoria(Producto producto, String categoria) {
@@ -370,35 +331,5 @@ public class PosMenuController {
     private String capitalizar(String texto) {
         String base = texto.toLowerCase(Locale.ROOT);
         return base.substring(0, 1).toUpperCase(Locale.ROOT) + base.substring(1);
-    }
-
-    private static class DetalleLinea {
-        private final Producto producto;
-        private final List<Extra> extras;
-        private int cantidad;
-
-        private DetalleLinea(Producto producto, List<Extra> extras) {
-            this.producto = producto;
-            this.extras = extras.stream()
-                    .sorted(Comparator.comparingInt(Extra::getIdExtra))
-                    .collect(Collectors.toCollection(ArrayList::new));
-            this.cantidad = 1;
-        }
-
-        private BigDecimal calcularSubtotal() {
-            BigDecimal precioBase = producto.getPrecioBase() != null ? producto.getPrecioBase() : BigDecimal.ZERO;
-            BigDecimal totalExtras = extras.stream()
-                    .map(extra -> extra.getPrecio() != null ? extra.getPrecio() : BigDecimal.ZERO)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-            return precioBase.add(totalExtras).multiply(BigDecimal.valueOf(cantidad));
-        }
-
-        private String obtenerNombresExtras() {
-            if (extras.isEmpty()) {
-                return "sin extras";
-            }
-            return extras.stream().map(Extra::getNombre).collect(Collectors.joining(", "));
-        }
     }
 }

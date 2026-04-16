@@ -22,6 +22,7 @@
             <padding>
                 <Insets top="14.0" right="18.0" bottom="14.0" left="18.0"/>
             </padding>
+            <Button text="Carrito" onAction="#handleAbrirCarrito" style="-fx-background-color: #2563eb; -fx-text-fill: white; -fx-background-radius: 20;"/>
             <Label text="POS - Registro de Menu" style="-fx-text-fill: white; -fx-font-size: 18px; -fx-font-weight: bold;"/>
             <Region HBox.hgrow="ALWAYS"/>
             <Label fx:id="usuarioLabel" text="Cajero:" style="-fx-text-fill: #e2e8f0; -fx-font-size: 14px;"/>
@@ -71,22 +72,5 @@
         </HBox>
     </center>
 
-    <bottom>
-        <VBox spacing="8.0" style="-fx-background-color: #0f172a;" BorderPane.alignment="CENTER">
-            <padding>
-                <Insets top="12.0" right="16.0" bottom="12.0" left="16.0"/>
-            </padding>
-
-            <Label text="Resumen de pedido (detalle + detalle extra)" style="-fx-text-fill: white; -fx-font-size: 15px; -fx-font-weight: bold;"/>
-            <VBox fx:id="carritoItemsBox" spacing="6.0">
-                <Label text="Aun no hay productos en el pedido." style="-fx-text-fill: #cbd5e1; -fx-font-size: 13px;"/>
-            </VBox>
-
-            <HBox spacing="18.0">
-                <Label fx:id="itemsResumenLabel" text="Items: 0" style="-fx-text-fill: #f8fafc; -fx-font-size: 14px;"/>
-                <Label fx:id="totalResumenLabel" text="Total: $0.00" style="-fx-text-fill: #f43f5e; -fx-font-size: 16px; -fx-font-weight: bold;"/>
-            </HBox>
-        </VBox>
-    </bottom>
 </BorderPane>
 
