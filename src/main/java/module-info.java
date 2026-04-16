@@ -10,5 +10,7 @@ module main.sistema_cafeteria_autoservicio {
 
     opens main.sistema_cafeteria_autoservicio to javafx.fxml;
     opens main.sistema_cafeteria_autoservicio.Controllers to javafx.fxml;
+    opens main.sistema_cafeteria_autoservicio.Models to javafx.base;
+
     exports main.sistema_cafeteria_autoservicio;
 }
