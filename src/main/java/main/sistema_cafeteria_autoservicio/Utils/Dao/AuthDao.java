@@ -1,6 +1,5 @@
 package main.sistema_cafeteria_autoservicio.Utils.Dao;
 
-import main.sistema_cafeteria_autoservicio.Models.User;
 import main.sistema_cafeteria_autoservicio.Utils.Connection.DatabaseConnection;
 
 public class AuthDao {

@@ -2,16 +2,16 @@ package main.sistema_cafeteria_autoservicio.Models;
 
 import java.util.Date;
 
-public class User {
+public class Usuario {
     public int id;
     public String nombre;
     public String email;
     public String password;
     public Date fecha_registro;
 
-    public User() {}
+    public Usuario() {}
 
-    public User(int id, String nombre, String email, String password) {
+    public Usuario(int id, String nombre, String email, String password) {
         this.id = id;
         this.nombre = nombre;
         this.email = email;
