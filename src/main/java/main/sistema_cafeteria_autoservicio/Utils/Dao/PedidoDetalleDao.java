@@ -5,6 +5,7 @@ import main.sistema_cafeteria_autoservicio.Utils.Connection.DatabaseConnection;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -12,10 +13,15 @@ import java.util.Optional;
 public class PedidoDetalleDao {
 
     public int create(PedidoDetalle detalle) throws SQLException {
+        try (var connection = DatabaseConnection.getInstance().getConnection()) {
+            return create(connection, detalle);
+        }
+    }
+
+    public int create(Connection connection, PedidoDetalle detalle) throws SQLException {
         String query = "INSERT INTO pedido_detalle (id_pedido, id_producto, cantidad, precio_base) VALUES (?, ?, ?, ?) RETURNING id_detalle";
 
-        try (var connection = DatabaseConnection.getInstance().getConnection();
-             var statement = connection.prepareStatement(query)) {
+        try (var statement = connection.prepareStatement(query)) {
             statement.setInt(1, detalle.getIdPedido());
             statement.setInt(2, detalle.getIdProducto());
             statement.setInt(3, detalle.getCantidad());

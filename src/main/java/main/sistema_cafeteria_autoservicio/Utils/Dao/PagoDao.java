@@ -4,6 +4,7 @@ import main.sistema_cafeteria_autoservicio.Models.Pago;
 import main.sistema_cafeteria_autoservicio.Utils.Connection.DatabaseConnection;
 
 import java.math.BigDecimal;
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -13,10 +14,15 @@ import java.util.Optional;
 public class PagoDao {
 
     public int create(Pago pago) throws SQLException {
+        try (var connection = DatabaseConnection.getInstance().getConnection()) {
+            return create(connection, pago);
+        }
+    }
+
+    public int create(Connection connection, Pago pago) throws SQLException {
         String query = "INSERT INTO pagos (id_pedido, id_metodo, monto, referencia) VALUES (?, ?, ?, ?) RETURNING id_pago";
 
-        try (var connection = DatabaseConnection.getInstance().getConnection();
-             var statement = connection.prepareStatement(query)) {
+        try (var statement = connection.prepareStatement(query)) {
             statement.setInt(1, pago.getIdPedido());
             statement.setInt(2, pago.getIdMetodo());
             statement.setBigDecimal(3, pago.getMonto());

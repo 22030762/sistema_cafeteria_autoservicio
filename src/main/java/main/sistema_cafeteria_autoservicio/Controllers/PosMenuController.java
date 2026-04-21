@@ -19,6 +19,7 @@ import main.sistema_cafeteria_autoservicio.Launcher;
 import main.sistema_cafeteria_autoservicio.Models.CarritoItem;
 import main.sistema_cafeteria_autoservicio.Models.Extra;
 import main.sistema_cafeteria_autoservicio.Models.Producto;
+import main.sistema_cafeteria_autoservicio.Models.Usuario;
 import main.sistema_cafeteria_autoservicio.Utils.Dao.ExtraDao;
 import main.sistema_cafeteria_autoservicio.Utils.Dao.ProductoDao;
 
@@ -49,6 +50,8 @@ public class PosMenuController {
     private final List<Producto> productos = new ArrayList<>();
     private final List<Extra> extrasDisponibles = new ArrayList<>();
     private final Map<String, CarritoItem> carritoDetalles = new LinkedHashMap<>();
+    private int idUsuarioSesion;
+    private String nombreUsuarioSesion = "";
 
     private String categoriaSeleccionada = "TODOS";
 
@@ -60,7 +63,19 @@ public class PosMenuController {
     }
 
     public void setUsuarioSesion(String username) {
-        usuarioLabel.setText("Cajero: " + username);
+        this.nombreUsuarioSesion = username == null ? "" : username;
+        usuarioLabel.setText("Cajero: " + this.nombreUsuarioSesion);
+    }
+
+    public void setUsuarioSesion(Usuario usuario) {
+        if (usuario == null) {
+            return;
+        }
+        this.idUsuarioSesion = usuario.getId();
+        this.nombreUsuarioSesion = usuario.getNombre() != null && !usuario.getNombre().isBlank()
+                ? usuario.getNombre()
+                : usuario.getEmail();
+        usuarioLabel.setText("Cajero: " + nombreUsuarioSesion);
     }
 
     @FXML
@@ -77,6 +92,7 @@ public class PosMenuController {
             Scene scene = new Scene(loader.load());
 
             CarritoModalController controller = loader.getController();
+            controller.setContextoCheckout(idUsuarioSesion, nombreUsuarioSesion);
             controller.setCarrito(carritoDetalles, this::actualizarResumenPedido);
 
             Stage owner = (Stage) usuarioLabel.getScene().getWindow();

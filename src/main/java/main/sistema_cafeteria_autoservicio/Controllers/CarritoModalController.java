@@ -3,17 +3,26 @@ package main.sistema_cafeteria_autoservicio.Controllers;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import main.sistema_cafeteria_autoservicio.Models.CarritoItem;
+import main.sistema_cafeteria_autoservicio.Models.MetodoPago;
+import main.sistema_cafeteria_autoservicio.Services.CheckoutService;
+import main.sistema_cafeteria_autoservicio.Utils.Dao.MetodoPagoDao;
 
 import java.math.BigDecimal;
+import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -27,10 +36,31 @@ public class CarritoModalController {
     private Label totalLabel;
     @FXML
     private Label estadoLabel;
+    @FXML
+    private ComboBox<MetodoPago> metodoPagoCombo;
+    @FXML
+    private TextField referenciaField;
+    @FXML
+    private Button checkoutButton;
 
     private Map<String, CarritoItem> carrito = new LinkedHashMap<>();
+    private final List<MetodoPago> metodosPago = new ArrayList<>();
+    private final CheckoutService checkoutService = new CheckoutService();
     private Runnable onCarritoActualizado = () -> {
     };
+    private int idUsuarioSesion;
+    private String nombreUsuarioSesion = "";
+
+    @FXML
+    public void initialize() {
+        cargarMetodosPago();
+    }
+
+    public void setContextoCheckout(int idUsuarioSesion, String nombreUsuarioSesion) {
+        this.idUsuarioSesion = idUsuarioSesion;
+        this.nombreUsuarioSesion = nombreUsuarioSesion == null ? "" : nombreUsuarioSesion;
+        actualizarEstadoSesion();
+    }
 
     public void setCarrito(Map<String, CarritoItem> carrito, Runnable onCarritoActualizado) {
         this.carrito = carrito;
@@ -42,6 +72,46 @@ public class CarritoModalController {
     public void handleCerrar() {
         Stage stage = (Stage) totalLabel.getScene().getWindow();
         stage.close();
+    }
+
+    @FXML
+    public void handleCheckout() {
+        if (carrito.isEmpty()) {
+            estadoLabel.setText("No hay productos para cobrar");
+            return;
+        }
+        MetodoPago metodo = metodoPagoCombo.getValue();
+        if (metodo == null) {
+            estadoLabel.setText("Selecciona un metodo de pago");
+            return;
+        }
+        if (idUsuarioSesion <= 0) {
+            estadoLabel.setText("Sesion invalida. Vuelve a iniciar sesion");
+            return;
+        }
+
+        try {
+            var resultado = checkoutService.procesarCheckout(
+                    idUsuarioSesion,
+                    carrito,
+                    metodo.getIdMetodo(),
+                    referenciaField != null ? referenciaField.getText() : ""
+            );
+
+            carrito.clear();
+            renderCarrito();
+            if (referenciaField != null) {
+                referenciaField.clear();
+            }
+            if (metodoPagoCombo != null) {
+                metodoPagoCombo.getSelectionModel().clearSelection();
+            }
+            estadoLabel.setText("Pedido #" + resultado.getIdPedido() + " cobrado correctamente");
+            mostrarConfirmacion(resultado.getIdPedido(), resultado.getTotal());
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            estadoLabel.setText("No se pudo completar el checkout");
+        }
     }
 
     private void renderCarrito() {
@@ -105,6 +175,7 @@ public class CarritoModalController {
 
         itemsLabel.setText("Items: " + totalItems);
         totalLabel.setText("Total a pagar: " + formatearMoneda(total));
+        checkoutButton.setDisable(totalItems == 0 || metodoPagoCombo.getSelectionModel().isEmpty());
         onCarritoActualizado.run();
     }
 
@@ -134,6 +205,55 @@ public class CarritoModalController {
             return "$0.00";
         }
         return String.format(Locale.US, "$%.2f", monto);
+    }
+
+    private void cargarMetodosPago() {
+        try {
+            MetodoPagoDao metodoPagoDao = new MetodoPagoDao();
+            metodosPago.clear();
+            metodosPago.addAll(metodoPagoDao.findAll());
+
+            metodoPagoCombo.getItems().setAll(metodosPago);
+            metodoPagoCombo.setCellFactory(list -> new javafx.scene.control.ListCell<>() {
+                @Override
+                protected void updateItem(MetodoPago item, boolean empty) {
+                    super.updateItem(item, empty);
+                    setText(empty || item == null ? null : item.getNombre());
+                }
+            });
+            metodoPagoCombo.setButtonCell(new javafx.scene.control.ListCell<>() {
+                @Override
+                protected void updateItem(MetodoPago item, boolean empty) {
+                    super.updateItem(item, empty);
+                    setText(empty || item == null ? "Selecciona metodo" : item.getNombre());
+                }
+            });
+            metodoPagoCombo.valueProperty().addListener((obs, oldVal, newVal) ->
+                    checkoutButton.setDisable(carrito.isEmpty() || newVal == null)
+            );
+            if (metodosPago.isEmpty()) {
+                estadoLabel.setText("No hay metodos de pago configurados");
+                checkoutButton.setDisable(true);
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            estadoLabel.setText("No se pudieron cargar los metodos de pago");
+            checkoutButton.setDisable(true);
+        }
+    }
+
+    private void mostrarConfirmacion(int idPedido, BigDecimal total) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Checkout completado");
+        alert.setHeaderText("Venta registrada");
+        alert.setContentText("Pedido #" + idPedido + "\nCajero: " + nombreUsuarioSesion + "\nTotal: " + formatearMoneda(total));
+        alert.showAndWait();
+    }
+
+    private void actualizarEstadoSesion() {
+        if (idUsuarioSesion > 0 && !nombreUsuarioSesion.isBlank()) {
+            estadoLabel.setText("Cajero activo: " + nombreUsuarioSesion);
+        }
     }
 }
 

@@ -9,6 +9,7 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 import main.sistema_cafeteria_autoservicio.Launcher;
+import main.sistema_cafeteria_autoservicio.Models.Usuario;
 import main.sistema_cafeteria_autoservicio.Utils.Dao.AuthDao;
 
 
@@ -34,10 +35,10 @@ public class AuthController {
 
         try {
             AuthDao authDao = new AuthDao();
-            boolean autenticado = authDao.login(username, password);
+            var usuarioAutenticado = authDao.authenticate(username, password);
 
-            if (autenticado) {
-                abrirMenuPos(username);
+            if (usuarioAutenticado.isPresent()) {
+                abrirMenuPos(usuarioAutenticado.get());
             } else {
                 errorLabel.setText("Credenciales incorrectas");
             }
@@ -47,14 +48,14 @@ public class AuthController {
         }
     }
 
-    private void abrirMenuPos(String username) throws java.io.IOException {
+    private void abrirMenuPos(Usuario usuario) throws java.io.IOException {
         FXMLLoader loader = new FXMLLoader(
                 Launcher.class.getResource("/main/sistema_cafeteria_autoservicio/pos-menu-view.fxml")
         );
 
         Scene posScene = new Scene(loader.load());
         PosMenuController posMenuController = loader.getController();
-        posMenuController.setUsuarioSesion(username);
+        posMenuController.setUsuarioSesion(usuario);
 
         Stage stage = (Stage) loginButton.getScene().getWindow();
         stage.setTitle("POS - Menu");

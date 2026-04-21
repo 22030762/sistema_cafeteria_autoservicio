@@ -5,6 +5,7 @@ import main.sistema_cafeteria_autoservicio.Utils.Connection.DatabaseConnection;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -12,10 +13,15 @@ import java.util.Optional;
 public class PedidoDao {
 
     public int create(Pedido pedido) throws SQLException {
+        try (var connection = DatabaseConnection.getInstance().getConnection()) {
+            return create(connection, pedido);
+        }
+    }
+
+    public int create(Connection connection, Pedido pedido) throws SQLException {
         String query = "INSERT INTO pedidos (id_usuario, total, estado) VALUES (?, ?, ?) RETURNING id_pedido";
 
-        try (var connection = DatabaseConnection.getInstance().getConnection();
-             var statement = connection.prepareStatement(query)) {
+        try (var statement = connection.prepareStatement(query)) {
             statement.setInt(1, pedido.getIdUsuario());
             statement.setBigDecimal(2, pedido.getTotal());
             statement.setString(3, pedido.getEstado());
@@ -82,10 +88,15 @@ public class PedidoDao {
     }
 
     public boolean updateEstado(int idPedido, String estado) throws SQLException {
+        try (var connection = DatabaseConnection.getInstance().getConnection()) {
+            return updateEstado(connection, idPedido, estado);
+        }
+    }
+
+    public boolean updateEstado(Connection connection, int idPedido, String estado) throws SQLException {
         String query = "UPDATE pedidos SET estado = ? WHERE id_pedido = ?";
 
-        try (var connection = DatabaseConnection.getInstance().getConnection();
-             var statement = connection.prepareStatement(query)) {
+        try (var statement = connection.prepareStatement(query)) {
             statement.setString(1, estado);
             statement.setInt(2, idPedido);
             return statement.executeUpdate() > 0;
